@@ -1,0 +1,18 @@
+package com.acc.backend.service;
+
+import com.acc.backend.domain.dto.res.PageResponse;
+import com.acc.backend.domain.dto.res.ResListPengajuanDana;
+import com.acc.backend.domain.entity.MasterUser;
+import org.springframework.security.core.Authentication;
+
+public interface PengajuanDanaService {
+    PageResponse<ResListPengajuanDana> getListPengajuan(
+            MasterUser user,
+            int page,
+            int size,
+            String sortBy,
+            String sortDir,
+            String search,
+            String status
+    );
+}

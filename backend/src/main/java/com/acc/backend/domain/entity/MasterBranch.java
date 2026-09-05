@@ -22,4 +22,8 @@ public class MasterBranch extends BaseEntity {
 
     @Column(name = "branch_name", nullable = false, length = 100)
     private String branchName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "area_id", nullable = false)
+    private MasterArea area;
 }
