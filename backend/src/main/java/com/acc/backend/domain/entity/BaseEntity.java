@@ -1,4 +1,4 @@
-package com.berijalan.spd.domain.entity;
+package com.acc.backend.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;

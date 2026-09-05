@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class LogApprovalHistory extends com.berijalan.spd.domain.entity.BaseLogEntity {
+public class LogApprovalHistory extends BaseLogEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
