@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<MasterUser, Long> {
-    Optional<MasterUser> findByNpkAndIsDeletedFalse(String npk);
+    Optional<MasterUser> findByNpkAndIsDeletedFalseAndIsActiveTrue(String npk);
 }

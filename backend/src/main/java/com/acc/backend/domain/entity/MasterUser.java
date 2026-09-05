@@ -26,6 +26,9 @@ public class MasterUser extends BaseEntity {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
+    @Column(name = "active_token", columnDefinition = "TEXT")
+    private String activeToken;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     private MasterRole role;

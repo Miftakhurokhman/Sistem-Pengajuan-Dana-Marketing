@@ -4,6 +4,7 @@ import com.acc.backend.domain.dto.req.ReqLogin;
 import com.acc.backend.domain.dto.res.BaseResponse;
 import com.acc.backend.domain.dto.res.ResLogin;
 import com.acc.backend.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +21,15 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<BaseResponse<ResLogin>> login(@Valid @RequestBody ReqLogin req) {
-        BaseResponse<ResLogin> response = authService.login(req);
+    public ResponseEntity<BaseResponse<ResLogin>> login(@Valid @RequestBody ReqLogin req, HttpServletRequest request) {
+        BaseResponse<ResLogin> response = authService.login(req, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<BaseResponse<String>> logout(
+            @RequestHeader(value = "Authorization", required = false) String bearerToken) {
+        BaseResponse<String> response = authService.logout(bearerToken);
         return ResponseEntity.ok(response);
     }
 }
