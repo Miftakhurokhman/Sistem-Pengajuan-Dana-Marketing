@@ -24,8 +24,10 @@ public class PengajuanDanaController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status
+            @RequestParam(defaultValue = "true") Boolean isNeedApproval,
+            @RequestParam(required = false) String searchBy,
+            @RequestParam(required = false) String searchValue
+
     ) {
         PageResponse<ResListPengajuanDana> result = pengajuanDanaService.getListPengajuan(
                 currentUser.getUser(),
@@ -33,8 +35,9 @@ public class PengajuanDanaController {
                 size,
                 sortBy,
                 sortDir,
-                search,
-                status
+                isNeedApproval,
+                searchBy,
+                searchValue
         );
 
         return ResponseEntity.ok(BaseResponse.ok( "Berhasil mengambil daftar pengajuan dana", result));

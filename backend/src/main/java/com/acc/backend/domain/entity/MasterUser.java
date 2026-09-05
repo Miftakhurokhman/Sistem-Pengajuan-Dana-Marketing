@@ -36,4 +36,8 @@ public class MasterUser extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "branch_id")
     private MasterBranch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_id", nullable = true)
+    private MasterBrand brand;
 }

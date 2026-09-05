@@ -12,7 +12,8 @@ public interface PengajuanDanaService {
             int size,
             String sortBy,
             String sortDir,
-            String search,
-            String status
+            Boolean isNeedApproval,
+            String searchBy,
+            String statusValue
     );
 }

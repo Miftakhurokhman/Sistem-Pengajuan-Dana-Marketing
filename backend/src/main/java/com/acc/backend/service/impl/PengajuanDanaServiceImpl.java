@@ -31,8 +31,9 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
             int size,
             String sortBy,
             String sortDir,
-            String search,
-            String status) {
+            Boolean isNeedApproval,
+            String searchBy,
+            String searchValue) {
 
         // 1. Ekstrak data role, userId, branchId, dan areaId langsung dari entity MasterUser
         String roleCode = (user.getRole() != null) ? user.getRole().getRoleCode() : null;
@@ -40,6 +41,8 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
         Long branchId = (user.getBranch() != null) ? user.getBranch().getId() : null;
         Long areaId = (user.getBranch() != null && user.getBranch().getArea() != null)
                 ? user.getBranch().getArea().getId() : null;
+        Long brandId = (user.getBrand() != null && user.getBrand().getId() != null)
+                ? user.getBrand().getId() : null;
 
         // 2. Tentukan Sorting & Pagination
         Sort sort = sortDir.equalsIgnoreCase("asc")
@@ -53,8 +56,10 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
                 userId,
                 branchId,
                 areaId,
-                search,
-                status
+                brandId,
+                isNeedApproval,
+                searchBy,
+                searchValue
         );
 
         // 4. Eksekusi Query ke Database
