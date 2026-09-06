@@ -19,5 +19,5 @@ public interface PengajuanDanaService {
             String statusValue
     );
 
-    ResDetailPengajuanDana getDetailPengajuan(Long id);
+    ResDetailPengajuanDana getDetailPengajuan(Long id, MasterUser currentUser);
 }

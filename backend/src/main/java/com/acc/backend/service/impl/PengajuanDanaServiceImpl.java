@@ -86,15 +86,15 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
 
     @Override
     @Transactional(readOnly = true)
-    public ResDetailPengajuanDana getDetailPengajuan(Long id) { // Ubah return type ke DTO murni
+    public ResDetailPengajuanDana getDetailPengajuan(Long id, MasterUser currentUser) { // Ubah return type ke DTO murni
         // 1. Cari Entity PengajuanDana
-        PengajuanDana entity = pengajuanDanaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Data pengajuan dana tidak ditemukan dengan ID: " + id));
+        PengajuanDana entity = pengajuanDanaRepository.findByIdAndIsActiveTrueAndIsDeletedFalse(id)
+                .orElseThrow(() -> new RuntimeException("Data pengajuan dana tidak ditemukan"));
 
-        // 2. Pengecekan Soft Delete
-        if (Boolean.TRUE.equals(entity.getIsDeleted())) {
-            throw new RuntimeException("Data pengajuan dana sudah dihapus.");
-        }
+        validateAccessDetail(currentUser, entity);
+
+        boolean berhakApprove = checkBerhakApprove(currentUser, entity);
+        boolean berhakMencairkan = checkBerhakMencairkan(currentUser, entity);
 
         // Mapping List Riwayat Approval
         List<ResApprovalHistory> histories = entity.getApprovalHistories() != null
@@ -124,7 +124,133 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
                         ? entity.getBranch().getArea().getAreaName() : null)
                 .brandName(entity.getBrand() != null ? entity.getBrand().getNamaBrand() : null)
                 .requesterName(entity.getRequester() != null ? entity.getRequester().getFullName() : null)
+                .proposalUrl(entity.getProposalUrl())
+                .pencairanUrl(entity.getPencairanUrl())
+                .namaBank(entity.getNamaBank())
+                .nomorRekening(entity.getNomorRekening())
+                .namaPemilikRekening(entity.getNamaPemilikRekening())
+                .berhakApprove(berhakApprove)
+                .berhakMencairkan(berhakMencairkan)
                 .approvalHistories(histories)
                 .build();
+    }
+
+    /**
+     * Pengecekan apakah user yang login berhak melakukan Approval berdasarkan Role, Status, dan Scope Wilayah
+     */
+    private boolean checkBerhakApprove(MasterUser user, PengajuanDana entity) {
+        if (user == null || user.getRole() == null || entity.getStatus() == null) {
+            return false;
+        }
+
+        String role = user.getRole().getRoleCode().toUpperCase();
+        String status = entity.getStatus();
+
+        Long userBranchId = user.getBranch() != null ? user.getBranch().getId() : null;
+        Long userAreaId = (user.getBranch() != null && user.getBranch().getArea() != null)
+                ? user.getBranch().getArea().getId() : null;
+        Long userBrandId = user.getBrand() != null ? user.getBrand().getId() : null;
+
+        Long entityBranchId = entity.getBranch() != null ? entity.getBranch().getId() : null;
+        Long entityAreaId = (entity.getBranch() != null && entity.getBranch().getArea() != null)
+                ? entity.getBranch().getArea().getId() : null;
+        Long entityBrandId = entity.getBrand() != null ? entity.getBrand().getId() : null;
+
+        // 1. BM -> Hanya jika status "Menunggu Approval BM" & Cabang Sesuai
+        if (role.contains("BM") && !role.contains("BRM") && "Menunggu Approval BM".equalsIgnoreCase(status)) {
+            return userBranchId != null && userBranchId.equals(entityBranchId);
+        }
+        // 2. RRSH -> Hanya jika status "Menunggu Approval RRSH" & Area Sesuai
+        if (role.contains("RRSH") && "Menunggu Approval RRSH".equalsIgnoreCase(status)) {
+            return userAreaId != null && userAreaId.equals(entityAreaId);
+        }
+        // 3. BRM -> Hanya jika status "Menunggu Approval BRM" & Brand Sesuai
+        if (role.contains("BRM") && "Menunggu Approval BRM".equalsIgnoreCase(status)) {
+            return userBrandId != null && userBrandId.equals(entityBrandId);
+        }
+        // 4. RRSDH -> Hanya jika status "Menunggu Approval RRSDH"
+        if (role.contains("RRSDH") && "Menunggu Approval RRSDH".equalsIgnoreCase(status)) {
+            return true;
+        }
+        // 5. CMSO -> Hanya jika status "Menunggu Approval CMSO"
+        if (role.contains("CMSO") && "Menunggu Approval CMSO".equalsIgnoreCase(status)) {
+            return true;
+        }
+        // 6. COO -> Hanya jika status "Menunggu Approval COO"
+        if (role.contains("COO") && "Menunggu Approval COO".equalsIgnoreCase(status)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Pengecekan apakah user berhak mencairkan dana
+     */
+    private boolean checkBerhakMencairkan(MasterUser user, PengajuanDana entity) {
+        if (user == null || user.getRole() == null || entity.getStatus() == null) {
+            return false;
+        }
+
+        String role = user.getRole().getRoleCode().toUpperCase();
+        String status = entity.getStatus();
+
+        // Pencairan hanya diizinkan jika pengajuan sudah sepenuhnya disetujui
+        if ("Disetujui".equalsIgnoreCase(status) || "Approved".equalsIgnoreCase(status) || "Menunggu Pencairan".equalsIgnoreCase(status)) {
+            // Sesuaikan role mana yang memegang proses pencairan (misal PIC Sales / Finance)
+            return role.contains("PIC_SALES") || role.contains("FINANCE");
+        }
+
+        return false;
+    }
+
+    /**
+     * Pengecekan apakah user memiliki hak akses untuk MELIHAT detail pengajuan ini
+     */
+    private void validateAccessDetail(MasterUser user, PengajuanDana entity) {
+        if (user == null || user.getRole() == null) {
+            throw new RuntimeException("Akses ditolak: Data pengguna tidak valid.");
+        }
+
+        String role = user.getRole().getRoleCode().toUpperCase();
+
+        // 1. PIC_SALES -> Hanya boleh melihat pengajuan miliknya sendiri
+        if (role.contains("PIC_SALES") || role.contains("SALES")) {
+            Long requesterId = (entity.getRequester() != null) ? entity.getRequester().getId() : null;
+            if (requesterId == null || !requesterId.equals(user.getId())) {
+                throw new RuntimeException("Anda tidak memiliki hak akses untuk melihat pengajuan ini.");
+            }
+        }
+
+        // 2. BM -> Hanya boleh melihat pengajuan di cabangnya
+        else if (role.contains("BM") && !role.contains("BRM")) {
+            Long userBranchId = (user.getBranch() != null) ? user.getBranch().getId() : null;
+            Long entityBranchId = (entity.getBranch() != null) ? entity.getBranch().getId() : null;
+            if (userBranchId == null || !userBranchId.equals(entityBranchId)) {
+                throw new RuntimeException("Anda tidak memiliki hak akses ke pengajuan cabang lain.");
+            }
+        }
+
+        // 3. RRSH -> Hanya boleh melihat pengajuan di areanya
+        else if (role.contains("RRSH")) {
+            Long userAreaId = (user.getBranch() != null && user.getBranch().getArea() != null)
+                    ? user.getBranch().getArea().getId() : null;
+            Long entityAreaId = (entity.getBranch() != null && entity.getBranch().getArea() != null)
+                    ? entity.getBranch().getArea().getId() : null;
+            if (userAreaId == null || !userAreaId.equals(entityAreaId)) {
+                throw new RuntimeException("Anda tidak memiliki hak akses ke pengajuan area lain.");
+            }
+        }
+
+        // 4. BRM -> Hanya boleh melihat pengajuan untuk brand-nya
+        else if (role.contains("BRM")) {
+            Long userBrandId = (user.getBrand() != null) ? user.getBrand().getId() : null;
+            Long entityBrandId = (entity.getBrand() != null) ? entity.getBrand().getId() : null;
+            if (userBrandId == null || !userBrandId.equals(entityBrandId)) {
+                throw new RuntimeException("Anda tidak memiliki hak akses ke pengajuan brand lain.");
+            }
+        }
+
+        // Role RRSDH, CMSO, COO memiliki akses global (tidak perlu filter scope)
     }
 }

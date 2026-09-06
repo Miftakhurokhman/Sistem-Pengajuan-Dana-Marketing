@@ -46,8 +46,8 @@ public class PengajuanDanaController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<ResDetailPengajuanDana>> getDetailPengajuan(@PathVariable Long id) {
-        ResDetailPengajuanDana result = pengajuanDanaService.getDetailPengajuan(id);
+    public ResponseEntity<BaseResponse<ResDetailPengajuanDana>> getDetailPengajuan(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        ResDetailPengajuanDana result = pengajuanDanaService.getDetailPengajuan(id, currentUser.getUser());
         return ResponseEntity.ok(BaseResponse.ok("Berhasil mengambil detail pengajuan dana", result));
     }
 }
