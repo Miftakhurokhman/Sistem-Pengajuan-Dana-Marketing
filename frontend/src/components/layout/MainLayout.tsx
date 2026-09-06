@@ -1,6 +1,6 @@
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { Wallet, LogOut, User, Building2, ShieldCheck } from 'lucide-react';
-import { api, clearAuthState, getStoredUser } from '../../utils/auth';
+import { api, clearAuthState, getStoredUser, getAuthToken } from '../../utils/auth';
 
 export const MainLayout = () => {
   const location = useLocation();
@@ -8,8 +8,16 @@ export const MainLayout = () => {
   const user = getStoredUser();
 
   const handleLogout = async () => {
+    const token = getAuthToken();
+
     try {
-      await api.post('/api/v1/auth/logout');
+      if (token) {
+        await api.post('/api/v1/auth/logout', {}, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
     } catch (error) {
       console.warn('Logout API failed, continuing local logout', error);
     } finally {

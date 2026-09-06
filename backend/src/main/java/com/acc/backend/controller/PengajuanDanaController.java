@@ -31,7 +31,7 @@ public class PengajuanDanaController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
-            @RequestParam(defaultValue = "true") Boolean isNeedApproval,
+            @RequestParam(defaultValue = "false") Boolean isNeedApproval,
             @RequestParam(required = false) String searchBy,
             @RequestParam(required = false) String searchValue
 

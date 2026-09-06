@@ -59,7 +59,7 @@ export const SubmissionSearchFilter = ({
 
         {/* Filter Status & Reset Action */}
         <div className="flex w-full md:w-auto items-center gap-2 justify-between md:justify-end">
-          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1 rounded-lg">
+          {/* <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1 rounded-lg">
             <Filter className="w-3.5 h-3.5 text-gray-400" />
             <select
               value={selectedStatus}
@@ -71,7 +71,7 @@ export const SubmissionSearchFilter = ({
               <option value="APPROVED">Approved</option>
               <option value="REJECTED">Rejected</option>
             </select>
-          </div>
+          </div> */}
 
           <button
             onClick={onReset}
