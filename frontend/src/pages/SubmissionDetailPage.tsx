@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ApprovalTimeline } from '../components/submission/ApprovalTimeline';
 import { ApprovalActionModal } from '../components/submission/ApprovalActionModal';
+import { CashoutActionModal } from '../components/submission/CashoutActionModal';
 import { formatRupiah } from '../utils/formatter';
-import { api } from '../utils/auth';
+import { api, getStoredUser } from '../utils/auth';
 import type { ApprovalHistory, ApprovalStatus } from '../types/submission';
 import {
   ArrowLeft,
@@ -90,40 +91,48 @@ export const SubmissionDetailPage = () => {
 
   const [activeTab, setActiveTab] = useState<'info' | 'history'>('info');
   const [modalType, setModalType] = useState<'approve' | 'reject' | null>(null);
+  const [cashoutModalOpen, setCashoutModalOpen] = useState(false);
   const [submission, setSubmission] = useState<ApiSubmissionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submittingApproval, setSubmittingApproval] = useState(false);
+  const [submittingCashout, setSubmittingCashout] = useState(false);
+
+  const currentUser = getStoredUser();
+  const isFinanceRole = (currentUser?.roleCode ?? '').toUpperCase().includes('FINANCE') ||
+    (currentUser?.roleCode ?? '').toUpperCase().includes('PIC FINANCE');
+
+  const fetchSubmission = async () => {
+    if (!id) return;
+
+    try {
+      setLoading(true);
+      setError('');
+
+      const response = await api.get(`/api/v1/pengajuan-dana/${id}`);
+      setSubmission(response.data?.data ?? null);
+    } catch (err) {
+      console.error('Failed to fetch pengajuan dana detail:', err);
+      setError('Gagal memuat detail pengajuan dana.');
+      setSubmission(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchSubmission = async () => {
-      if (!id) return;
-
-      try {
-        setLoading(true);
-        setError('');
-
-        const response = await api.get(`/api/v1/pengajuan-dana/${id}`);
-        setSubmission(response.data?.data ?? null);
-      } catch (err) {
-        console.error('Failed to fetch pengajuan dana detail:', err);
-        setError('Gagal memuat detail pengajuan dana.');
-        setSubmission(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     void fetchSubmission();
   }, [id]);
 
   const normalizeAction = (action?: string | null): ApprovalHistory['status'] => {
     const value = (action ?? '').trim().toLowerCase();
 
-    if (value === 'diajukan') return 'Diajukan';
+    if (value === 'diajukan' || value === 'submitted') return 'Diajukan';
     if (value === 'disetujui' || value === 'approved') return 'Disetujui';
     if (value === 'ditolak' || value === 'rejected') return 'Ditolak';
     if (value === 'kadaluarsa' || value === 'expired') return 'Kadaluarsa';
+    if (value === 'dicairkan' || value === 'cashout' || value === 'pencairan') return 'Dicairkan';
+    if (value === 'siap dicairkan' || value === 'ready for cashout') return 'Siap Dicairkan';
 
     return 'Menunggu Proses';
   };
@@ -161,7 +170,9 @@ export const SubmissionDetailPage = () => {
 
   const safeStatus = (submission.status ?? 'Menunggu Approval BM') as ApprovalStatus;
   const proposalUrl = resolveFileUrl(submission.proposalUrl);
+  const pencairanUrl = resolveFileUrl(submission.pencairanUrl);
   const canApprove = Boolean(submission.berhakApprove);
+  const canCashout = isFinanceRole && safeStatus === 'Siap Dicairkan';
 
   const handleModalSubmit = async (type: 'approve' | 'reject', reason: string) => {
     if (!id) return;
@@ -184,7 +195,7 @@ export const SubmissionDetailPage = () => {
 
       alert(message);
       setModalType(null);
-      navigate('/');
+      await fetchSubmission();
     } catch (err: any) {
       const backendMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message;
       setError(
@@ -199,6 +210,35 @@ export const SubmissionDetailPage = () => {
       );
     } finally {
       setSubmittingApproval(false);
+    }
+  };
+
+  const handleCashoutSubmit = async (file: File) => {
+    if (!id) return;
+
+    const formData = new FormData();
+    formData.append('buktiTransfer', file);
+
+    try {
+      setSubmittingCashout(true);
+      setError('');
+
+      const response = await api.put(`/api/v1/pengajuan-dana/${id}/pencairan`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const message = response?.data?.message || 'Pengajuan dana berhasil dicairkan.';
+      alert(message);
+      setCashoutModalOpen(false);
+      await fetchSubmission();
+    } catch (err: any) {
+      const backendMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message;
+      setError(`Gagal melakukan pencairan: ${backendMessage}`);
+      alert(`Gagal melakukan pencairan: ${backendMessage}`);
+    } finally {
+      setSubmittingCashout(false);
     }
   };
 
@@ -378,6 +418,43 @@ export const SubmissionDetailPage = () => {
                   </div>
                 )}
               </div>
+
+              {safeStatus === 'Dicairkan' && pencairanUrl && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-green-600" />
+                      <h3 className="font-semibold text-gray-800 text-sm">Bukti Transfer (PDF)</h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={pencairanUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600 font-medium bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Buka Tab Baru
+                      </a>
+                      <a
+                        href={pencairanUrl}
+                        download
+                        className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Unduh
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-[500px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                    <iframe
+                      src={pencairanUrl}
+                      title={`Bukti-Transfer-${submission.nomorPengajuan}`}
+                      className="w-full h-full border-0"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <ApprovalTimeline history={approvalHistory} />
@@ -385,28 +462,45 @@ export const SubmissionDetailPage = () => {
         </div>
       </div>
 
-      {canApprove && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
+      {(canApprove || canCashout) && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h3 className="font-semibold text-gray-800 text-sm">Aksi Persetujuan</h3>
+            <h3 className="font-semibold text-gray-800 text-sm">
+              {canApprove && canCashout ? 'Aksi Persetujuan & Pencairan' : 'Aksi'}
+            </h3>
             <p className="text-xs text-gray-500">
-              Tentukan tindakan persetujuan untuk pengajuan dana {submission.nomorPengajuan}
+              {canApprove
+                ? `Tentukan tindakan persetujuan untuk pengajuan dana ${submission.nomorPengajuan}`
+                : 'Upload bukti transfer untuk proses pencairan dana.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setModalType('reject')}
-              className="px-5 py-2.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-medium text-sm flex items-center gap-2 transition-all cursor-pointer"
-            >
-              <XCircle className="w-4 h-4" /> Tolak Pengajuan
-            </button>
-            <button
-              onClick={() => setModalType('approve')}
-              className="px-5 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm flex items-center gap-2 transition-all cursor-pointer shadow-sm"
-            >
-              <CheckCircle2 className="w-4 h-4" /> Setujui Pengajuan
-            </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            {canApprove && (
+              <>
+                <button
+                  onClick={() => setModalType('reject')}
+                  className="px-5 py-2.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-medium text-sm flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <XCircle className="w-4 h-4" /> Tolak Pengajuan
+                </button>
+                <button
+                  onClick={() => setModalType('approve')}
+                  className="px-5 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium text-sm flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Setujui Pengajuan
+                </button>
+              </>
+            )}
+
+            {canCashout && (
+              <button
+                onClick={() => setCashoutModalOpen(true)}
+                className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              >
+                <FileText className="w-4 h-4" /> Pencairan
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -418,6 +512,14 @@ export const SubmissionDetailPage = () => {
         isSubmitting={submittingApproval}
         onClose={() => setModalType(null)}
         onSubmit={handleModalSubmit}
+      />
+
+      <CashoutActionModal
+        isOpen={cashoutModalOpen}
+        submissionNo={submission.nomorPengajuan}
+        isSubmitting={submittingCashout}
+        onClose={() => setCashoutModalOpen(false)}
+        onSubmit={handleCashoutSubmit}
       />
     </div>
   );

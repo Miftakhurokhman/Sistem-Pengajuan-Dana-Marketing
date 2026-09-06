@@ -26,7 +26,7 @@ export interface ApprovalHistory {
   id: number;
   role: string;
   approverName: string;
-  status: 'Diajukan' | 'Disetujui' | 'Ditolak' | 'Kadaluarsa' | 'Menunggu Proses';
+  status: 'Diajukan' | 'Disetujui' | 'Ditolak' | 'Kadaluarsa' | 'Dicairkan' | 'Siap Dicairkan' | 'Menunggu Proses';
   date: string;
   notes?: string;
 }

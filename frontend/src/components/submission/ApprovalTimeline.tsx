@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, UserCheck } from 'lucide-react';
+import { CheckCircle2, UserCheck } from 'lucide-react';
 import type { ApprovalHistory } from '../../types/submission';
 
 interface ApprovalTimelineProps {
@@ -9,31 +9,24 @@ export const ApprovalTimeline = ({ history }: ApprovalTimelineProps) => {
   return (
     <div className="relative pl-6 border-l-2 border-gray-200 space-y-6 my-2">
       {history.map((item) => {
-        const isApproved = item.status === 'Disetujui';
-        const isSubmitted = item.status === 'Diajukan';
-        const isRejected = item.status === 'Ditolak';
-        const isExpired = item.status === 'Kadaluarsa';
-        const isPending = item.status === 'Menunggu Proses';
+        const isApproved = item.status === 'Disetujui' || item.status === 'Diajukan' || item.status === 'Dicairkan';
+        const isRejected = item.status === 'Ditolak' || item.status === 'Kadaluarsa';
+        const isPending = item.status === 'Menunggu Proses' || item.status === 'Siap Dicairkan';
 
         return (
           <div key={item.id} className="relative">
-            {/* Icon Indicator */}
             <div
               className={`absolute -left-[31px] top-0 w-6 h-6 rounded-full flex items-center justify-center border-2 bg-white ${
-                isApproved || isSubmitted
+                isApproved
                   ? 'border-green-600 text-green-600'
                   : isPending
                   ? 'border-amber-500 text-amber-500'
-                  : isRejected || isExpired
+                  : isRejected
                   ? 'border-red-600 text-red-600'
                   : 'border-gray-400 text-gray-400'
               }`}
             >
-              {isApproved || isSubmitted ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              ) : (
-                <Clock className="w-3.5 h-3.5 animate-pulse" />
-              )}
+              <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
 
             {/* Item Card */}
@@ -53,11 +46,11 @@ export const ApprovalTimeline = ({ history }: ApprovalTimelineProps) => {
               <div className="flex items-center gap-2 pt-1">
                 <span
                   className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                    isApproved || isSubmitted
+                    isApproved
                       ? 'bg-green-100 text-green-700'
                       : isPending
                       ? 'bg-amber-100 text-amber-700'
-                      : isRejected || isExpired
+                      : isRejected
                       ? 'bg-red-100 text-red-700'
                       : 'bg-gray-100 text-gray-700'
                   }`}
