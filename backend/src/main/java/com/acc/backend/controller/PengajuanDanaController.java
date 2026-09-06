@@ -1,12 +1,16 @@
 package com.acc.backend.controller;
 
+import com.acc.backend.domain.dto.req.ReqCreatePengajuanDana;
 import com.acc.backend.domain.dto.res.BaseResponse;
 import com.acc.backend.domain.dto.res.PageResponse;
 import com.acc.backend.domain.dto.res.ResDetailPengajuanDana;
 import com.acc.backend.domain.dto.res.ResListPengajuanDana;
 import com.acc.backend.security.CustomUserDetails;
 import com.acc.backend.service.PengajuanDanaService; // Sesuaikan package service kamu
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -49,5 +53,15 @@ public class PengajuanDanaController {
     public ResponseEntity<BaseResponse<ResDetailPengajuanDana>> getDetailPengajuan(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
         ResDetailPengajuanDana result = pengajuanDanaService.getDetailPengajuan(id, currentUser.getUser());
         return ResponseEntity.ok(BaseResponse.ok("Berhasil mengambil detail pengajuan dana", result));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BaseResponse<ResDetailPengajuanDana>> createPengajuanDana(
+            @Valid @ModelAttribute ReqCreatePengajuanDana request,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        ResDetailPengajuanDana result = pengajuanDanaService.createPengajuanDana(request, currentUser.getUser());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponse.ok("Berhasil membuat pengajuan dana", result));
     }
 }
