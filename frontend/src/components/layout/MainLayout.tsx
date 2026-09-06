@@ -1,25 +1,26 @@
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { Wallet, LogOut, User, Building2, ShieldCheck } from 'lucide-react';
+import { api, clearAuthState, getStoredUser } from '../../utils/auth';
 
 export const MainLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const user = getStoredUser();
 
-  // Mock data user login (nanti diganti dengan state/context Auth dari Spring Boot)
-  const user = {
-    name: 'Miftakhurokman',
-    role: 'Branch Manager (BM)',
-    branch: 'ACC Jakarta Selatan',
-  };
-
-  const handleLogout = () => {
-    alert('Berhasil logout dari sistem');
+  const handleLogout = async () => {
+    try {
+      await api.post('/api/v1/auth/logout');
+    } catch (error) {
+      console.warn('Logout API failed, continuing local logout', error);
+    } finally {
+      clearAuthState();
+      navigate('/login', { replace: true });
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* 1. TOPBAR / HEADER */}
       <header className="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between sticky top-0 z-30">
-        {/* Identitas Aplikasi / Brand */}
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 text-white p-2 rounded-lg font-bold text-lg tracking-wider">
             ACC
@@ -32,20 +33,19 @@ export const MainLayout = () => {
           </div>
         </div>
 
-        {/* Informasi Akun Login & Logout */}
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 border-r border-gray-200 pr-6">
             <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
               <User className="w-5 h-5" />
             </div>
             <div className="text-right">
-              <p className="text-xs font-bold text-gray-800">{user.name}</p>
+              <p className="text-xs font-bold text-gray-800">{user?.fullName ?? 'User'}</p>
               <div className="flex items-center justify-end gap-1 text-[11px] text-gray-500">
                 <ShieldCheck className="w-3 h-3 text-blue-600" />
-                <span>{user.role}</span>
+                <span>{user?.roleName ?? 'Role'}</span>
                 <span className="text-gray-300">•</span>
                 <Building2 className="w-3 h-3 text-gray-400" />
-                <span>{user.branch}</span>
+                <span>{user?.branchName ?? 'Cabang'}</span>
               </div>
             </div>
           </div>
@@ -62,7 +62,6 @@ export const MainLayout = () => {
       </header>
 
       <div className="flex flex-1">
-        {/* 2. SIDEBAR NAVIGATION */}
         <aside className="w-64 bg-white border-r border-gray-200 p-4 space-y-2 shrink-0 min-h-[calc(100vh-4rem)]">
           <div className="px-3 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
             Menu Utama
@@ -83,7 +82,6 @@ export const MainLayout = () => {
           </nav>
         </aside>
 
-        {/* 3. MAIN CONTENT AREA */}
         <main className="flex-1 p-8 overflow-y-auto">
           <Outlet />
         </main>

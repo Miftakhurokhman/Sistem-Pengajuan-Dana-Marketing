@@ -1,21 +1,31 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { MainLayout } from './components/layout/MainLayout';
 import { SubmissionListPage } from './pages/SubmissionListPage';
 import { SubmissionDetailPage } from './pages/SubmissionDetailPage';
 import { LoginPage } from './pages/LoginPage';
+import { isAuthenticated } from './utils/auth';
+
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+  return isAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />;
+};
+
+const PublicRoute = ({ children }: { children: ReactNode }) => {
+  return !isAuthenticated() ? <>{children}</> : <Navigate to="/" replace />;
+};
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Route Halaman Login */}
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
-        {/* Route dengan Layout Wrapper (Sidebar & TopBar) */}
-        <Route element={<MainLayout />}>
+        <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route path="/" element={<SubmissionListPage />} />
           <Route path="/submission/:id" element={<SubmissionDetailPage />} />
         </Route>
+
+        <Route path="*" element={<Navigate to={isAuthenticated() ? '/' : '/login'} replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -2,25 +2,21 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { api, setAuthState } from '../utils/auth';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
 
-  // State Form
   const [npk, setNpk] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
-  // State Feedback & Loading
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle Form Submit
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validasi Sederhana
     if (!npk.trim() || !password.trim()) {
       setError('NPK dan Password wajib diisi.');
       return;
@@ -28,27 +24,35 @@ export const LoginPage = () => {
 
     setIsLoading(true);
 
-    // Simulasi Proses Authentication API (dapat diganti dengan Service/Context Auth)
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await api.post('/api/v1/auth/login', {
+        npk: npk.trim(),
+        password,
+      });
 
-      // Dummy credentials check untuk testing/demo
-      if (npk === '123456' && password === 'password123') {
-        // Berhasil login -> Arahkan ke Halaman Utama / List Pengajuan
-        navigate('/');
-      } else if (npk !== '123456') {
-        setError('NPK tidak terdaftar dalam sistem.');
-      } else {
-        setError('Password yang Anda masukkan salah.');
+      const user = response.data?.data;
+
+      if (!user?.token) {
+        throw new Error('Respons login tidak valid.');
       }
-    }, 1000);
+
+      setAuthState(user);
+      navigate('/', { replace: true });
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response
+          ? (err.response as { data?: { message?: string } }).data?.message || 'Login gagal. Periksa NPK dan password Anda.'
+          : 'Login gagal. Periksa NPK dan password Anda.';
+
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md">
-        
-        {/* Header / Brand Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl shadow-md text-white font-bold text-xl mb-3">
             SPD
@@ -59,10 +63,7 @@ export const LoginPage = () => {
           </p>
         </div>
 
-        {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 space-y-6">
-          
-          {/* Alert Message jika ada Error */}
           {error && (
             <div className="flex items-center gap-2.5 p-3.5 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -71,8 +72,6 @@ export const LoginPage = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Input NPK */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                 NPK (Nomor Pokok Karyawan)
@@ -83,7 +82,7 @@ export const LoginPage = () => {
                   type="text"
                   value={npk}
                   onChange={(e) => setNpk(e.target.value)}
-                  placeholder="Masukkan NPK (contoh: 123456)"
+                  placeholder="Masukkan NPK"
                   className="w-full pl-9 pr-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-medium"
                   disabled={isLoading}
                   autoFocus
@@ -91,7 +90,6 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            {/* Input Password */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-xs font-semibold text-gray-700">
@@ -123,7 +121,6 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            {/* Tombol Submit Login */}
             <button
               type="submit"
               disabled={isLoading}
@@ -140,19 +137,13 @@ export const LoginPage = () => {
             </button>
           </form>
 
-          {/* Box Informasi Akses Demo */}
           <div className="pt-4 border-t border-gray-100 text-center">
-            <p className="text-[11px] text-gray-400">
-              Kredensial Akses Demo:
-            </p>
-            <p className="text-[11px] font-mono text-gray-600 mt-1">
-              NPK: <span className="font-bold text-gray-800">123456</span> | Password: <span className="font-bold text-gray-800">password123</span>
+            <p className="text-[11px] text-gray-500">
+              Gunakan akun yang terdaftar di sistem internal PT Berijalan.
             </p>
           </div>
-
         </div>
 
-        {/* Footer info */}
         <p className="text-center text-[11px] text-gray-400 mt-6">
           &copy; {new Date().getFullYear()} PT Berijalan Akses Wijaya. All rights reserved.
         </p>
