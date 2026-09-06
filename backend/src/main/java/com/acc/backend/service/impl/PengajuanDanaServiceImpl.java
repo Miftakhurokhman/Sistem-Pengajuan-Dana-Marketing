@@ -2,6 +2,7 @@ package com.acc.backend.service.impl;
 
 import com.acc.backend.domain.dto.req.ReqApprovePengajuanDana;
 import com.acc.backend.domain.dto.req.ReqCreatePengajuanDana;
+import com.acc.backend.domain.dto.req.ReqRejectPengajuanDana;
 import com.acc.backend.domain.dto.res.*;
 import com.acc.backend.domain.entity.*;
 import com.acc.backend.repository.LogApprovalHistoryRepository;
@@ -246,6 +247,46 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
 
         logApprovalHistoryRepository.save(approvalLog);
 
+        return getDetailPengajuan(savedPengajuan.getId(), currentUser);
+    }
+
+    @Override
+    @Transactional
+    public ResDetailPengajuanDana rejectPengajuanDana(Long id, ReqRejectPengajuanDana request, MasterUser currentUser) {
+        // 1. Cari data pengajuan dana
+        PengajuanDana pengajuan = pengajuanDanaRepository.findByIdAndIsActiveTrueAndIsDeletedFalse(id)
+                .orElseThrow(() -> new RuntimeException("Pengajuan dana dengan ID " + id + " tidak ditemukan."));
+
+        String currentStatus = pengajuan.getStatus();
+        String userRole = currentUser.getRole().getRoleCode();
+
+        // 2. Validasi Hak Akses Role & Scope (Sama seperti approve)
+        validateRoleAndScope(pengajuan, currentUser, currentStatus, userRole);
+
+        // 3. Update Status Pengajuan Dana ke "Ditolak"
+        pengajuan.setStatus("Ditolak");
+        pengajuan.setUpdatedAt(LocalDateTime.now());
+        pengajuan.setUpdatedBy(currentUser.getNpk());
+
+        // 4. Simpan Perubahan Pengajuan Dana
+        PengajuanDana savedPengajuan = pengajuanDanaRepository.save(pengajuan);
+
+        // 5. Simpan Log Approval History
+        LogApprovalHistory rejectLog = LogApprovalHistory.builder()
+                .pengajuanDana(savedPengajuan)
+                .approver(currentUser)
+                .approverRole(userRole)
+                .status("Ditolak")
+                .notes(request.getCatatan())
+                .actionDate(LocalDateTime.now())
+                .isDeleted(false)
+                .createdBy(currentUser.getNpk())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        logApprovalHistoryRepository.save(rejectLog);
+
+        // 6. Return Response Detail Pengajuan
         return getDetailPengajuan(savedPengajuan.getId(), currentUser);
     }
 

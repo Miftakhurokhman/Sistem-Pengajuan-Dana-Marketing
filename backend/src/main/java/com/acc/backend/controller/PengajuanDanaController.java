@@ -2,6 +2,7 @@ package com.acc.backend.controller;
 
 import com.acc.backend.domain.dto.req.ReqApprovePengajuanDana;
 import com.acc.backend.domain.dto.req.ReqCreatePengajuanDana;
+import com.acc.backend.domain.dto.req.ReqRejectPengajuanDana;
 import com.acc.backend.domain.dto.res.BaseResponse;
 import com.acc.backend.domain.dto.res.PageResponse;
 import com.acc.backend.domain.dto.res.ResDetailPengajuanDana;
@@ -78,5 +79,15 @@ public class PengajuanDanaController {
 
         ResDetailPengajuanDana result = pengajuanDanaService.approvePengajuanDana(id, request, currentUser.getUser());
         return ResponseEntity.ok(BaseResponse.ok("Pengajuan dana berhasil disetujui", result));
+    }
+
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<BaseResponse<ResDetailPengajuanDana>> rejectPengajuanDana(
+            @PathVariable Long id,
+            @Valid @RequestBody ReqRejectPengajuanDana request,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        ResDetailPengajuanDana result = pengajuanDanaService.rejectPengajuanDana(id, request, currentUser.getUser());
+        return ResponseEntity.ok(BaseResponse.ok("Pengajuan dana berhasil ditolak", result));
     }
 }
