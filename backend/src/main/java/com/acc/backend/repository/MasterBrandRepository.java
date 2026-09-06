@@ -24,5 +24,5 @@ public interface MasterBrandRepository extends JpaRepository<MasterBrand, Long> 
     /**
      * Mengambil daftar semua brand yang aktif dan belum dihapus (misal untuk dropdown pilihan brand).
      */
-    List<MasterBrand> findAllByIsActiveTrueAndIsDeletedFalse();
+    List<MasterBrand> findByIsActiveTrueAndIsDeletedFalseOrderByNamaBrandAsc();
 }
