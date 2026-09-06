@@ -20,8 +20,8 @@ public class LogApprovalHistory extends BaseLogEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "submission_id", nullable = false)
-    private MasterSubmission submission;
+    @JoinColumn(name = "pengajuan_dana_id", nullable = false)
+    private PengajuanDana pengajuanDana;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approver_id")

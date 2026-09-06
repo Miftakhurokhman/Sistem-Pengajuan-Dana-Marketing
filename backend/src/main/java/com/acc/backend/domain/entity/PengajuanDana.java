@@ -6,6 +6,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Table(name = "trn_pengajuan_dana")
@@ -46,6 +47,10 @@ public class PengajuanDana extends BaseEntity {
     @Column(name = "proposal_url", columnDefinition = "TEXT")
     private String proposalUrl;
 
+    @Column(name = "pencairan_url", columnDefinition = "TEXT")
+    private String pencairanUrl;
+
+
     @Column(name = "status", nullable = false)
     private String status;
 
@@ -71,4 +76,7 @@ public class PengajuanDana extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id", nullable = false)
     private MasterBrand brand;
+
+    @OneToMany(mappedBy = "pengajuanDana", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<LogApprovalHistory> approvalHistories;
 }
