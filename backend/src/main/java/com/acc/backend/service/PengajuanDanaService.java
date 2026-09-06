@@ -8,7 +8,7 @@ import com.acc.backend.domain.dto.res.PageResponse;
 import com.acc.backend.domain.dto.res.ResDetailPengajuanDana;
 import com.acc.backend.domain.dto.res.ResListPengajuanDana;
 import com.acc.backend.domain.entity.MasterUser;
-import org.springframework.security.core.Authentication;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface PengajuanDanaService {
     PageResponse<ResListPengajuanDana> getListPengajuan(
@@ -29,4 +29,6 @@ public interface PengajuanDanaService {
     ResDetailPengajuanDana approvePengajuanDana(Long id, ReqApprovePengajuanDana request, MasterUser currentUser);
 
     ResDetailPengajuanDana rejectPengajuanDana(Long id, ReqRejectPengajuanDana request, MasterUser currentUser);
+
+    ResDetailPengajuanDana pencairkanPengajuanDana(Long id, MultipartFile buktiTransfer, MasterUser currentUser);
 }

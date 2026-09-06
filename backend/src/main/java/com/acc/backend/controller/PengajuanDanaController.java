@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/pengajuan-dana")
@@ -89,5 +90,15 @@ public class PengajuanDanaController {
     ) {
         ResDetailPengajuanDana result = pengajuanDanaService.rejectPengajuanDana(id, request, currentUser.getUser());
         return ResponseEntity.ok(BaseResponse.ok("Pengajuan dana berhasil ditolak", result));
+    }
+
+    @PutMapping(value = "/{id}/pencairan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BaseResponse<ResDetailPengajuanDana>> pencairkanPengajuanDana(
+            @PathVariable Long id,
+            @RequestParam("buktiTransfer") MultipartFile buktiTransfer,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        ResDetailPengajuanDana result = pengajuanDanaService.pencairkanPengajuanDana(id, buktiTransfer, currentUser.getUser());
+        return ResponseEntity.ok(BaseResponse.ok("Pengajuan dana berhasil dicairkan", result));
     }
 }

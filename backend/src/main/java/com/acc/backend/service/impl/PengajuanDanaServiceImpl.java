@@ -290,6 +290,49 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
         return getDetailPengajuan(savedPengajuan.getId(), currentUser);
     }
 
+    @Override
+    @Transactional
+    public ResDetailPengajuanDana pencairkanPengajuanDana(Long id, MultipartFile buktiTransfer, MasterUser currentUser) {
+        PengajuanDana pengajuan = pengajuanDanaRepository.findByIdAndIsActiveTrueAndIsDeletedFalse(id)
+                .orElseThrow(() -> new RuntimeException("Pengajuan dana dengan ID " + id + " tidak ditemukan."));
+
+        String roleCode = currentUser.getRole() != null ? currentUser.getRole().getRoleCode() : "";
+        String normalizedRole = roleCode.toUpperCase();
+
+        if (!normalizedRole.contains("PIC FINANCE") && !normalizedRole.contains("FINANCE")) {
+            throw new RuntimeException("Hanya PIC Finance yang berhak melakukan pencairan dana.");
+        }
+
+        if (!"Siap Dicairkan".equalsIgnoreCase(pengajuan.getStatus())) {
+            throw new RuntimeException("Pengajuan dana belum siap untuk dicairkan.");
+        }
+
+        String buktiTransferUrl = savePencairanFile(buktiTransfer);
+
+        pengajuan.setPencairanUrl(buktiTransferUrl);
+        pengajuan.setStatus("Dicairkan");
+        pengajuan.setUpdatedAt(LocalDateTime.now());
+        pengajuan.setUpdatedBy(currentUser.getNpk());
+
+        PengajuanDana savedPengajuan = pengajuanDanaRepository.save(pengajuan);
+
+        LogApprovalHistory cashOutLog = LogApprovalHistory.builder()
+                .pengajuanDana(savedPengajuan)
+                .approver(currentUser)
+                .approverRole(currentUser.getRole().getRoleCode())
+                .status("Dicairkan")
+                .notes("Bukti transfer diunggah dan pencairan dilakukan oleh " + currentUser.getFullName())
+                .actionDate(LocalDateTime.now())
+                .isDeleted(false)
+                .createdBy(currentUser.getNpk())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        logApprovalHistoryRepository.save(cashOutLog);
+
+        return getDetailPengajuan(savedPengajuan.getId(), currentUser);
+    }
+
     /**
      * Helper untuk memvalidasi Role dan Scope (Cabang, Area, Brand)
      */
@@ -485,6 +528,46 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
             return "/" + uploadDir + fileName;
         } catch (IOException e) {
             throw new RuntimeException("Gagal menyimpan file proposal: " + e.getMessage());
+        }
+    }
+
+    private String savePencairanFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("File bukti transfer wajib diunggah.");
+        }
+
+        long maxSizeBytes = 1 * 1024 * 1024;
+        if (file.getSize() > maxSizeBytes) {
+            throw new RuntimeException("Ukuran file bukti transfer tidak boleh lebih dari 1 MB.");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+
+        boolean isPdfExtension = originalFilename != null && originalFilename.toLowerCase().endsWith(".pdf");
+        boolean isPdfContentType = contentType != null && (
+                contentType.equalsIgnoreCase("application/pdf") ||
+                        contentType.equalsIgnoreCase("application/x-pdf")
+        );
+
+        if (!isPdfExtension && !isPdfContentType) {
+            throw new RuntimeException("Format file bukti transfer harus berupa PDF.");
+        }
+
+        try {
+            String uploadDir = "uploads/pencairan/";
+            File dir = new File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            String fileName = UUID.randomUUID() + "_" + originalFilename;
+            Path filePath = Paths.get(uploadDir + fileName);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            return "/" + uploadDir + fileName;
+        } catch (IOException e) {
+            throw new RuntimeException("Gagal menyimpan file bukti transfer: " + e.getMessage());
         }
     }
 
