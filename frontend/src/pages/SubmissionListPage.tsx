@@ -14,6 +14,7 @@ type ApiSubmission = {
   nomorPengajuan: string;
   requesterName: string;
   brandName?: string | null;
+  areaName?: string | null;
   nominalPengajuan: number | string;
   status: string;
   tanggalKegiatan?: string | null;
@@ -54,6 +55,11 @@ const getDefaultTab = (roleCode?: string): TabType => {
   return hasApprovalTabs(roleCode) ? 'need-approval' : 'all-data';
 };
 
+const isPicSalesRole = (roleCode?: string) => {
+  const normalized = (roleCode ?? '').toUpperCase();
+  return normalized.includes('PIC SALES') || normalized.includes('SALES');
+};
+
 export const SubmissionListPage = () => {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
@@ -62,6 +68,7 @@ export const SubmissionListPage = () => {
 
   const [searchBy, setSearchBy] = useState<SearchByCategory>('submissionNo');
   const [searchValue, setSearchValue] = useState('');
+  const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [activeTab, setActiveTab] = useState<TabType>(getDefaultTab(roleCode));
   const [page, setPage] = useState(0);
@@ -79,6 +86,14 @@ export const SubmissionListPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchValue(searchValue.trim());
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [searchValue]);
 
   useEffect(() => {
     if (!showApprovalTabs) {
@@ -151,6 +166,7 @@ export const SubmissionListPage = () => {
           submissionNo: item.nomorPengajuan,
           applicantName: item.requesterName ?? '-',
           brandName: item.brandName ?? '-',
+          areaName: item.areaName ?? '-',
           branchName: item.branchName ?? '-',
           nominal: Number(item.nominalPengajuan ?? 0),
           status: item.status || 'Menunggu Approval BM',
@@ -187,22 +203,9 @@ export const SubmissionListPage = () => {
 
   const filteredSubmissions = useMemo(() => {
     return submissions.filter((item) => {
-      // const statusFilterMatch =
-      //   selectedStatus === 'ALL'
-      //     ? true
-      //     : selectedStatus === 'PENDING'
-      //     ? item.status.startsWith('Menunggu')
-      //     : selectedStatus === 'APPROVED'
-      //     ? item.status === 'Siap Dicairkan' || item.status === 'Dicairkan'
-      //     : item.status === 'Ditolak';
+      if (!debouncedSearchValue) return true;
 
-      // if (!statusFilterMatch) {
-      //   return false;
-      // }
-
-      if (!searchValue.trim()) return true;
-
-      const query = searchValue.toLowerCase();
+      const query = debouncedSearchValue.toLowerCase();
 
       if (searchBy === 'submissionNo') {
         return String(item.submissionNo).toLowerCase().includes(query);
@@ -216,9 +219,17 @@ export const SubmissionListPage = () => {
         return String(item.branchName).toLowerCase().includes(query);
       }
 
+      if (searchBy === 'areaName') {
+        return String(item.areaName).toLowerCase().includes(query);
+      }
+
+      if (searchBy === 'brandName') {
+        return String(item.brandName).toLowerCase().includes(query);
+      }
+
       return true;
     });
-  }, [searchBy, searchValue, selectedStatus, submissions]);
+  }, [debouncedSearchValue, searchBy, selectedStatus, submissions]);
 
   const handleResetFilter = () => {
     setSearchBy('submissionNo');
@@ -245,13 +256,24 @@ export const SubmissionListPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Daftar Pengajuan Dana</h1>
           <p className="text-sm text-gray-500 mt-1">
             Kelola dan pantau seluruh riwayat pengajuan dana
           </p>
         </div>
+
+        {isPicSalesRole(roleCode) && (
+          <button
+            type="button"
+            onClick={() => navigate('/submission/new')}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            Ajukan Dana
+          </button>
+        )}
       </div>
 
       {showApprovalTabs && (
@@ -319,7 +341,7 @@ export const SubmissionListPage = () => {
               <tr className="bg-gray-50/50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4">No. Pengajuan</th>
                 <th className="py-3.5 px-4">Pemohon</th>
-                <th className="py-3.5 px-4">Brand</th>
+                <th className="py-3.5 px-4">Brand / Area / Cabang</th>
                 <th className="py-3.5 px-4">Nominal</th>
                 <th className="py-3.5 px-4">Tanggal Event</th>
                 <th className="py-3.5 px-4">Status</th>
@@ -341,7 +363,13 @@ export const SubmissionListPage = () => {
                       {item.submissionNo}
                     </td>
                     <td className="py-3.5 px-4 font-medium text-gray-700">{item.applicantName}</td>
-                    <td className="py-3.5 px-4 text-gray-600">{item.brandName}</td>
+                    <td className="py-3.5 px-4 text-gray-600">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-gray-700">{item.brandName}</div>
+                        <div className="text-[11px] text-gray-500">{item.areaName}</div>
+                        <div className="text-[11px] text-gray-500">{item.branchName}</div>
+                      </div>
+                    </td>
                     <td className="py-3.5 px-4 font-bold text-gray-900">{formatRupiah(item.nominal)}</td>
                     <td className="py-3.5 px-4 text-gray-500">{item.createdAt}</td>
                     <td className="py-3.5 px-4">

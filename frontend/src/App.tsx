@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { MainLayout } from './components/layout/MainLayout';
 import { SubmissionListPage } from './pages/SubmissionListPage';
 import { SubmissionDetailPage } from './pages/SubmissionDetailPage';
+import { CreateSubmissionPage } from './pages/CreateSubmissionPage';
 import { LoginPage } from './pages/LoginPage';
 import { isAuthenticated } from './utils/auth';
 
@@ -22,6 +23,7 @@ export default function App() {
 
         <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route path="/" element={<SubmissionListPage />} />
+          <Route path="/submission/new" element={<CreateSubmissionPage />} />
           <Route path="/submission/:id" element={<SubmissionDetailPage />} />
         </Route>
 

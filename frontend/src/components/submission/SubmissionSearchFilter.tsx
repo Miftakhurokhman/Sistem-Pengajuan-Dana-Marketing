@@ -1,6 +1,6 @@
 import { Search, RotateCcw } from 'lucide-react';
 
-export type SearchByCategory = 'submissionNo' | 'applicantName' | 'branchName';
+export type SearchByCategory = 'submissionNo' | 'applicantName' | 'branchName' | 'areaName' | 'brandName';
 
 interface SubmissionSearchFilterProps {
   searchBy: SearchByCategory;
@@ -34,6 +34,8 @@ export const SubmissionSearchFilter = ({
             <option value="submissionNo">Nomor Pengajuan</option>
             <option value="applicantName">Nama Pemohon</option>
             <option value="branchName">Cabang</option>
+            <option value="areaName">Area</option>
+            <option value="brandName">Brand</option>
           </select>
 
           {/* Input Keyword Search */}
@@ -48,7 +50,11 @@ export const SubmissionSearchFilter = ({
                   ? 'Nomor Pengajuan (misal: REQ-001)'
                   : searchBy === 'applicantName'
                   ? 'Nama Pemohon'
-                  : 'Nama Cabang'
+                  : searchBy === 'branchName'
+                  ? 'Nama Cabang'
+                  : searchBy === 'areaName'
+                  ? 'Nama Area'
+                  : 'Nama Brand'
               }...`}
               className="w-full pl-9 pr-4 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />

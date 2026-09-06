@@ -30,6 +30,7 @@ public class ReqCreatePengajuanDana {
     private BigInteger nominalPengajuan;
 
     @NotNull(message = "Tanggal kegiatan tidak boleh kosong")
+    @FutureOrPresent(message = "Tanggal kegiatan minimal hari ini")
     private LocalDate tanggalKegiatan;
 
     @NotBlank(message = "Nama bank tidak boleh kosong")
