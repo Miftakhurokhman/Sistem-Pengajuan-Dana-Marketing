@@ -1,5 +1,6 @@
 package com.acc.backend.domain.dto.res;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,5 +18,7 @@ public class ResApprovalHistory {
     private String approverRole;
     private String action;
     private String notes;
+
+    @JsonFormat(pattern = "dd MMMM yyyy HH:mm", timezone = "Asia/Jakarta", locale = "id")
     private LocalDateTime actionAt;
 }

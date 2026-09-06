@@ -1,5 +1,6 @@
 package com.acc.backend.controller;
 
+import com.acc.backend.domain.dto.req.ReqApprovePengajuanDana;
 import com.acc.backend.domain.dto.req.ReqCreatePengajuanDana;
 import com.acc.backend.domain.dto.res.BaseResponse;
 import com.acc.backend.domain.dto.res.PageResponse;
@@ -63,5 +64,19 @@ public class PengajuanDanaController {
         ResDetailPengajuanDana result = pengajuanDanaService.createPengajuanDana(request, currentUser.getUser());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(BaseResponse.ok("Berhasil membuat pengajuan dana", result));
+    }
+
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<BaseResponse<ResDetailPengajuanDana>> approvePengajuanDana(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) ReqApprovePengajuanDana request,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        if (request == null) {
+            request = new ReqApprovePengajuanDana();
+        }
+
+        ResDetailPengajuanDana result = pengajuanDanaService.approvePengajuanDana(id, request, currentUser.getUser());
+        return ResponseEntity.ok(BaseResponse.ok("Pengajuan dana berhasil disetujui", result));
     }
 }

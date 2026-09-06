@@ -1,12 +1,11 @@
 package com.acc.backend.service.impl;
 
+import com.acc.backend.domain.dto.req.ReqApprovePengajuanDana;
 import com.acc.backend.domain.dto.req.ReqCreatePengajuanDana;
 import com.acc.backend.domain.dto.res.*;
-import com.acc.backend.domain.entity.LogApprovalHistory;
-import com.acc.backend.domain.entity.MasterBrand;
-import com.acc.backend.domain.entity.MasterUser;
-import com.acc.backend.domain.entity.PengajuanDana;
+import com.acc.backend.domain.entity.*;
 import com.acc.backend.repository.LogApprovalHistoryRepository;
+import com.acc.backend.repository.MasterApprovalLimitRepository;
 import com.acc.backend.repository.MasterBrandRepository;
 import com.acc.backend.repository.PengajuanDanaRepository;
 import com.acc.backend.service.PengajuanDanaService;
@@ -43,6 +42,7 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
     private final LogApprovalHistoryRepository logApprovalHistoryRepository;
     private final PengajuanDanaRepository pengajuanDanaRepository;
     private final MasterBrandRepository masterBrandRepository;
+    private final MasterApprovalLimitRepository masterApprovalLimitRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -110,8 +110,8 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
         boolean berhakApprove = checkBerhakApprove(currentUser, entity);
         boolean berhakMencairkan = checkBerhakMencairkan(currentUser, entity);
 
-        List<ResApprovalHistory> histories = entity.getApprovalHistories() != null
-                ? entity.getApprovalHistories().stream()
+        List<ResApprovalHistory> histories = logApprovalHistoryRepository.findByPengajuanDanaIdOrderByActionDateAsc(entity.getId())
+                .stream()
                 .map(history -> ResApprovalHistory.builder()
                         .id(history.getId())
                         .approverName(history.getApprover() != null ? history.getApprover().getFullName() : null)
@@ -120,8 +120,7 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
                         .notes(history.getNotes())
                         .actionAt(history.getActionDate())
                         .build())
-                .toList()
-                : List.of();
+                .toList();
 
         return ResDetailPengajuanDana.builder()
                 .id(entity.getId())
@@ -176,6 +175,7 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
                 .namaBank(request.getNamaBank())
                 .area(currentUser.getBranch().getArea())
                 .nomorRekening(request.getNomorRekening())
+                .createdBy(currentUser.getNpk())
                 .namaPemilikRekening(request.getNamaPemilikRekening())
                 .proposalUrl(proposalUrl) // FIX: Menggunakan variabel proposalUrl dari hasil simpan file
                 .status(initialStatus)
@@ -203,6 +203,156 @@ public class PengajuanDanaServiceImpl implements PengajuanDanaService {
         // 6. Kembalikan Response Detail Pengajuan
         return getDetailPengajuan(savedEntity.getId(), currentUser);
     }
+
+    @Override
+    @Transactional
+    public ResDetailPengajuanDana approvePengajuanDana(Long id, ReqApprovePengajuanDana request, MasterUser currentUser) {
+        // 1. Cari data pengajuan dana
+        PengajuanDana pengajuan = pengajuanDanaRepository.findByIdAndIsActiveTrueAndIsDeletedFalse(id)
+                .orElseThrow(() -> new RuntimeException("Pengajuan dana dengan ID " + id + " tidak ditemukan."));
+
+        String currentStatus = pengajuan.getStatus();
+        String userRole = currentUser.getRole().getRoleCode(); // misal: "BM", "RRSH", "BRM", "RRSDH", "CMSO", "COO"
+        BigDecimal nominalPengajuan = pengajuan.getNominalPengajuan();
+
+        // 2. Validasi Hak Akses Role & Scope (Cabang, Area, Brand)
+        validateRoleAndScope(pengajuan, currentUser, currentStatus, userRole);
+
+        // 3. Tentukan Status Selanjutnya berdasarkan Nominal & Limit Role
+        String nextStatus = determineNextStatus(currentStatus, userRole, nominalPengajuan, currentUser);
+
+        // 4. Update Data Approval Pengajuan Dana
+        pengajuan.setStatus(nextStatus);
+        pengajuan.setUpdatedAt(LocalDateTime.now());
+
+        String catatan = (request != null && request.getCatatan() != null) ? request.getCatatan() : null;
+        pengajuan.setUpdatedBy(currentUser.getNpk());
+
+        // 5. Simpan Perubahan
+        PengajuanDana savedPengajuan = pengajuanDanaRepository.save(pengajuan);
+
+        // 6. Simpan Log Approval History
+        LogApprovalHistory approvalLog = LogApprovalHistory.builder()
+                .pengajuanDana(savedPengajuan)
+                .approver(currentUser)
+                .approverRole(userRole)
+                .status("Disetujui") // Aksi yang dilakukan oleh approver
+                .notes(catatan != null ? catatan : "Disetujui oleh " + currentUser.getFullName() + " (" + userRole + ")")
+                .actionDate(LocalDateTime.now())
+                .isDeleted(false)
+                .createdBy(currentUser.getNpk())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        logApprovalHistoryRepository.save(approvalLog);
+
+        return getDetailPengajuan(savedPengajuan.getId(), currentUser);
+    }
+
+    /**
+     * Helper untuk memvalidasi Role dan Scope (Cabang, Area, Brand)
+     */
+    private void validateRoleAndScope(PengajuanDana pengajuan, MasterUser user, String status, String roleCode) {
+        switch (status) {
+            case "Menunggu Approval BM":
+                if (!"BM".equalsIgnoreCase(roleCode)) {
+                    throw new RuntimeException("Hanya BM yang berhak melakukan approval pada tahap ini.");
+                }
+                // Validasi Scope Cabang
+                if (user.getBranch() == null || pengajuan.getBranch() == null ||
+                        !user.getBranch().getId().equals(pengajuan.getBranch().getId())) {
+                    throw new RuntimeException("Anda hanya dapat menyetujui pengajuan dana untuk cabang Anda.");
+                }
+                break;
+
+            case "Menunggu Approval RRSH":
+                if (!"RRSH".equalsIgnoreCase(roleCode)) {
+                    throw new RuntimeException("Hanya RRSH yang berhak melakukan approval pada tahap ini.");
+                }
+                // Validasi Scope Area (misal dari Branch -> Area)
+                if (user.getBranch().getArea() == null || pengajuan.getArea() == null ||
+                        !user.getBranch().getArea().getId().equals(pengajuan.getBranch().getArea().getId())) {
+                    throw new RuntimeException("Anda hanya dapat menyetujui pengajuan dana untuk area Anda.");
+                }
+                break;
+
+            case "Menunggu Approval BRM":
+                if (!"BRM".equalsIgnoreCase(roleCode)) {
+                    throw new RuntimeException("Hanya BRM yang berhak melakukan approval pada tahap ini.");
+                }
+                // Validasi Scope Brand
+                if (user.getBrand() == null || pengajuan.getBrand() == null ||
+                        !user.getBrand().getId().equals(pengajuan.getBrand().getId())) {
+                    throw new RuntimeException("Anda hanya dapat menyetujui pengajuan dana untuk brand Anda.");
+                }
+                break;
+
+            case "Menunggu Approval RRSDH":
+                if (!"RRSDH".equalsIgnoreCase(roleCode)) {
+                    throw new RuntimeException("Hanya RRSDH yang berhak melakukan approval pada tahap ini.");
+                }
+                break;
+
+            case "Menunggu Approval CMSO":
+                if (!"CMSO".equalsIgnoreCase(roleCode)) {
+                    throw new RuntimeException("Hanya CMSO yang berhak melakukan approval pada tahap ini.");
+                }
+                break;
+
+            case "Menunggu Approval COO":
+                if (!"COO".equalsIgnoreCase(roleCode)) {
+                    throw new RuntimeException("Hanya COO yang berhak melakukan approval pada tahap ini.");
+                }
+                break;
+
+            default:
+                throw new RuntimeException("Pengajuan dana tidak dalam status yang memerlukan approval (Status: " + status + ").");
+        }
+    }
+
+    /**
+     * Helper untuk menentukan status selanjutnya berdasarkan Maksimal Nominal Approval
+     */
+    private String determineNextStatus(String currentStatus, String roleCode, BigDecimal nominal, MasterUser user) {
+        // Ambil max limit nominal dari Role atau User (misal dari masterRole)
+        BigDecimal maxLimit = masterApprovalLimitRepository
+                .findByRoleIdAndIsActiveTrueAndIsDeletedFalse(user.getRole().getId())
+                .map(MasterApprovalLimit::getMaxNominal)
+                .orElse(BigDecimal.ZERO);
+
+        switch (roleCode.toUpperCase()) {
+            case "BM":
+                return "Menunggu Approval RRSH";
+
+            case "RRSH":
+                return "Menunggu Approval BRM";
+
+            case "BRM":
+                if (maxLimit != null && nominal.compareTo(maxLimit) <= 0) {
+                    return "Siap Dicairkan";
+                }
+                return "Menunggu Approval RRSDH";
+
+            case "RRSDH":
+                if (maxLimit != null && nominal.compareTo(maxLimit) <= 0) {
+                    return "Siap Dicairkan";
+                }
+                return "Menunggu Approval CMSO";
+
+            case "CMSO":
+                if (maxLimit != null && nominal.compareTo(maxLimit) <= 0) {
+                    return "Siap Dicairkan";
+                }
+                return "Menunggu Approval COO";
+
+            case "COO":
+                return "Siap Dicairkan";
+
+            default:
+                throw new RuntimeException("Role pengguna tidak terdaftar dalam matriks approval.");
+        }
+    }
+
 
     private String generateNomorPengajuan() {
         String prefix = "SPD/" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM")) + "/";

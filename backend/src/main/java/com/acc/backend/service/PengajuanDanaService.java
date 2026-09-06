@@ -1,5 +1,6 @@
 package com.acc.backend.service;
 
+import com.acc.backend.domain.dto.req.ReqApprovePengajuanDana;
 import com.acc.backend.domain.dto.req.ReqCreatePengajuanDana;
 import com.acc.backend.domain.dto.res.BaseResponse;
 import com.acc.backend.domain.dto.res.PageResponse;
@@ -23,4 +24,6 @@ public interface PengajuanDanaService {
     ResDetailPengajuanDana getDetailPengajuan(Long id, MasterUser currentUser);
 
     ResDetailPengajuanDana createPengajuanDana(ReqCreatePengajuanDana request, MasterUser currentUser);
+
+    ResDetailPengajuanDana approvePengajuanDana(Long id, ReqApprovePengajuanDana request, MasterUser currentUser);
 }
