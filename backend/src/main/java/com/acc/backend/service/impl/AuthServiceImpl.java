@@ -83,6 +83,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(user.getFullName())
                 .roleCode(user.getRole().getRoleCode())
                 .roleName(user.getRole().getRoleName())
+                .brandName(user.getBrand() != null ? user.getBrand().getNamaBrand() : null)
                 .branchName(user.getBranch() != null ? user.getBranch().getBranchName() : null)
                 .token(token)
                 .build();

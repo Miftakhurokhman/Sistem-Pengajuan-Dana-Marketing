@@ -7,6 +7,7 @@ export type AuthUser = {
   roleCode: string;
   roleName: string;
   branchName?: string | null;
+  brandName?: string | null;
   token: string;
 };
 

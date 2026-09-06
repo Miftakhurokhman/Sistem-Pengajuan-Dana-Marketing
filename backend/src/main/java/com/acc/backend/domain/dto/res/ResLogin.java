@@ -16,5 +16,6 @@ public class ResLogin {
     private String roleCode;
     private String roleName;
     private String branchName;
+    private String brandName;
     private String token;
 }

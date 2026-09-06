@@ -6,6 +6,7 @@ export const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getStoredUser();
+  const isBrmRole = (user?.roleCode ?? '').toUpperCase().includes('BRM');
 
   const handleLogout = async () => {
     const token = getAuthToken();
@@ -48,12 +49,18 @@ export const MainLayout = () => {
             </div>
             <div className="text-right">
               <p className="text-xs font-bold text-gray-800">{user?.fullName ?? 'User'}</p>
-              <div className="flex items-center justify-end gap-1 text-[11px] text-gray-500">
+              <div className="flex items-center justify-end gap-1 text-[11px] text-gray-500 flex-wrap">
                 <ShieldCheck className="w-3 h-3 text-blue-600" />
                 <span>{user?.roleName ?? 'Role'}</span>
                 <span className="text-gray-300">•</span>
                 <Building2 className="w-3 h-3 text-gray-400" />
                 <span>{user?.branchName ?? 'Cabang'}</span>
+                {isBrmRole && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <span className="text-blue-600 font-semibold">Brand: {user?.brandName ?? 'Brand'}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
