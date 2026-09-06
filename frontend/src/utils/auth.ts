@@ -30,6 +30,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      clearAuthState();
+
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export const getAuthToken = (): string | null => {
   return localStorage.getItem(AUTH_STORAGE_KEY);
 };

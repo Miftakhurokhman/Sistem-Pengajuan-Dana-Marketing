@@ -1,4 +1,4 @@
-import { Search, RotateCcw, Filter } from 'lucide-react';
+import { Search, RotateCcw } from 'lucide-react';
 
 export type SearchByCategory = 'submissionNo' | 'applicantName' | 'branchName';
 
@@ -17,8 +17,6 @@ export const SubmissionSearchFilter = ({
   setSearchBy,
   searchValue,
   setSearchValue,
-  selectedStatus,
-  setSelectedStatus,
   onReset,
 }: SubmissionSearchFilterProps) => {
   return (

@@ -9,9 +9,11 @@ export const ApprovalTimeline = ({ history }: ApprovalTimelineProps) => {
   return (
     <div className="relative pl-6 border-l-2 border-gray-200 space-y-6 my-2">
       {history.map((item) => {
-        const isApproved = item.status === 'Approved';
-        const isSubmitted = item.status === 'Submitted';
-        const isPending = item.status === 'Pending';
+        const isApproved = item.status === 'Disetujui';
+        const isSubmitted = item.status === 'Diajukan';
+        const isRejected = item.status === 'Ditolak';
+        const isExpired = item.status === 'Kadaluarsa';
+        const isPending = item.status === 'Menunggu Proses';
 
         return (
           <div key={item.id} className="relative">
@@ -22,7 +24,9 @@ export const ApprovalTimeline = ({ history }: ApprovalTimelineProps) => {
                   ? 'border-green-600 text-green-600'
                   : isPending
                   ? 'border-amber-500 text-amber-500'
-                  : 'border-red-600 text-red-600'
+                  : isRejected || isExpired
+                  ? 'border-red-600 text-red-600'
+                  : 'border-gray-400 text-gray-400'
               }`}
             >
               {isApproved || isSubmitted ? (
@@ -53,14 +57,12 @@ export const ApprovalTimeline = ({ history }: ApprovalTimelineProps) => {
                       ? 'bg-green-100 text-green-700'
                       : isPending
                       ? 'bg-amber-100 text-amber-700'
-                      : 'bg-red-100 text-red-700'
+                      : isRejected || isExpired
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-gray-100 text-gray-700'
                   }`}
                 >
-                  {item.status === 'Submitted'
-                    ? 'Diajukan'
-                    : item.status === 'Approved'
-                    ? 'Disetujui'
-                    : 'Menunggu Process'}
+                  {item.status}
                 </span>
               </div>
 
